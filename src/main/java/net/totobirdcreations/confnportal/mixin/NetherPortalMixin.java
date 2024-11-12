@@ -1,15 +1,15 @@
 package net.totobirdcreations.confnportal.mixin;
 
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.NetherPortalBlock;
 import net.minecraft.registry.tag.BlockTags;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.BlockView;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldAccess;
 import net.minecraft.world.dimension.NetherPortal;
 import net.totobirdcreations.confnportal.Mod;
 import org.jetbrains.annotations.Nullable;
@@ -25,29 +25,30 @@ import java.util.ArrayList;
 @Mixin(NetherPortal.class)
 public class NetherPortalMixin {
 
-	private final NetherPortal self = (NetherPortal)(Object) this;
+	private final ArrayList<BlockPos>   blocks    = new ArrayList<>();
+	private       Direction.Axis        direction = Direction.Axis.X;
+	private       @Nullable ServerWorld world     = null;
 
-	private final ArrayList<BlockPos> blocks    = new ArrayList<>();
-	private       Direction.Axis      direction = Direction.Axis.X;
-	private       @Nullable World     world     = null;
-
-	@Inject(method = "<init>", at = @At("RETURN"))
-	private void init(WorldAccess view, BlockPos pos, Direction.Axis axis, CallbackInfo ci) {
-		this.world = view instanceof World world$ ? world$ : null;
-		if (this.portalsAllowCustomShapes()) {
-			self.lowerCorner = null;
-			self.width       = 0;
-			self.height      = 0;
-			this.blocks.clear();
-			this.direction = Direction.Axis.X;
-			if (! this.checkAxis(pos, 0)) {
-				this.blocks.clear();
-				this.direction = Direction.Axis.Z;
-				if (! this.checkAxis(pos, 0)) {
-					this.blocks.clear();
+	@ModifyReturnValue(method = "getOnAxis", at = @At("RETURN"))
+	private static NetherPortal init(NetherPortal original, BlockView view) {
+		NetherPortalMixin self = (NetherPortalMixin)(Object) original;
+		var pos = original.lowerCorner;
+		self.world = view instanceof ServerWorld world$ ? world$ : null;
+		if (self.portalsAllowCustomShapes()) {
+			original.lowerCorner = null;
+			original.width       = 0;
+			original.height      = 0;
+			self.blocks.clear();
+			self.direction = Direction.Axis.X;
+			if (! self.checkAxis(pos, 0)) {
+				self.blocks.clear();
+				self.direction = Direction.Axis.Z;
+				if (! self.checkAxis(pos, 0)) {
+					self.blocks.clear();
 				}
 			}
 		}
+		return original;
 	}
 
 	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
@@ -100,13 +101,13 @@ public class NetherPortalMixin {
 
 	@Inject(method = "method_30487", at = @At("HEAD"), cancellable = true, remap = false)
 	private static void isValidFrameBlock(BlockState state, BlockView view, BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
-		if (view instanceof World world && world.getGameRules().getBoolean(Mod.PORTALS_ALLOW_CUSTOM_SHAPES)) {
+		if (view instanceof ServerWorld world && world.getGameRules().getBoolean(Mod.PORTALS_ALLOW_CUSTOM_SHAPES)) {
 			cir.setReturnValue(isValidFrameBlock(state, view, pos));
 		}
 	}
 
 	private static boolean isValidFrameBlock(BlockState state, BlockView view, BlockPos ignored) {
-		return view instanceof World world && (
+		return view instanceof ServerWorld world && (
 				(world.getGameRules().getBoolean(Mod.PORTALS_ALLOW_CRYING_OBSIDIAN) && state.isOf(Blocks.CRYING_OBSIDIAN))
 						|| (state.isOf(Blocks.OBSIDIAN))
 		);
