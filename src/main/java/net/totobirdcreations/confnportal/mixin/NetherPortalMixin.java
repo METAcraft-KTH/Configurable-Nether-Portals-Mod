@@ -14,6 +14,7 @@ import net.minecraft.world.level.portal.PortalShape;
 import net.totobirdcreations.confnportal.Mod;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -25,8 +26,11 @@ import java.util.ArrayList;
 @Mixin(PortalShape.class)
 public class NetherPortalMixin {
 
+	@Unique
 	private final ArrayList<BlockPos>   blocks    = new ArrayList<>();
+	@Unique
 	private       Direction.Axis        direction = Direction.Axis.X;
+	@Unique
 	private       @Nullable ServerLevel world     = null;
 
 	@ModifyReturnValue(method = "findAnyShape", at = @At("RETURN"))
@@ -51,6 +55,7 @@ public class NetherPortalMixin {
 		return original;
 	}
 
+	@Unique
 	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 	private boolean checkAxis(BlockPos pos, int depth) {
 		assert this.world != null;
@@ -106,6 +111,7 @@ public class NetherPortalMixin {
 		}
 	}
 
+	@Unique
 	private static boolean isValidFrameBlock(BlockState state, BlockGetter view, BlockPos ignored) {
 		return view instanceof ServerLevel world && (
 				(world.getGameRules().get(Mod.PORTALS_ALLOW_CRYING_OBSIDIAN) && state.is(Blocks.CRYING_OBSIDIAN))
@@ -113,23 +119,27 @@ public class NetherPortalMixin {
 		);
 	}
 
+	@Unique
 	private boolean isValidFrameBlock(BlockPos pos) {
 		return this.world != null && isValidFrameBlock(this.world.getBlockState(pos), this.world, pos);
 	}
 
-
+	@Unique
 	private boolean portalsAllowCustomShapes() {
 		return this.world != null && this.world.getGameRules().get(Mod.PORTALS_ALLOW_CUSTOM_SHAPES);
 	}
 
+	@Unique
 	private int portalsCustomSearchMaxDepth() {
 		return this.world != null ? this.world.getGameRules().get(Mod.PORTALS_CUSTOM_SEARCH_MAX_DEPTH) : -1;
 	}
 
+	@Unique
 	private int portalsCustomShapeMinBlocks() {
 		return this.world != null ? this.world.getGameRules().get(Mod.PORTALS_CUSTOM_SHAPE_MIN_BLOCKS) : -1;
 	}
 
+	@Unique
 	private int portalsCustomShapeMaxBlocks() {
 		return this.world != null ? this.world.getGameRules().get(Mod.PORTALS_CUSTOM_SHAPE_MAX_BLOCKS) : -1;
 	}
