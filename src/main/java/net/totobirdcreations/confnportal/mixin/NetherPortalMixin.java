@@ -101,14 +101,14 @@ public class NetherPortalMixin {
 
 	@Inject(method = "method_30487", at = @At("HEAD"), cancellable = true, remap = false)
 	private static void isValidFrameBlock(BlockState state, BlockView view, BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
-		if (view instanceof ServerWorld world && world.getGameRules().getBoolean(Mod.PORTALS_ALLOW_CUSTOM_SHAPES)) {
+		if (view instanceof ServerWorld world && world.getGameRules().getValue(Mod.PORTALS_ALLOW_CUSTOM_SHAPES)) {
 			cir.setReturnValue(isValidFrameBlock(state, view, pos));
 		}
 	}
 
 	private static boolean isValidFrameBlock(BlockState state, BlockView view, BlockPos ignored) {
 		return view instanceof ServerWorld world && (
-				(world.getGameRules().getBoolean(Mod.PORTALS_ALLOW_CRYING_OBSIDIAN) && state.isOf(Blocks.CRYING_OBSIDIAN))
+				(world.getGameRules().getValue(Mod.PORTALS_ALLOW_CRYING_OBSIDIAN) && state.isOf(Blocks.CRYING_OBSIDIAN))
 						|| (state.isOf(Blocks.OBSIDIAN))
 		);
 	}
@@ -119,19 +119,19 @@ public class NetherPortalMixin {
 
 
 	private boolean portalsAllowCustomShapes() {
-		return this.world != null && this.world.getGameRules().getBoolean(Mod.PORTALS_ALLOW_CUSTOM_SHAPES);
+		return this.world != null && this.world.getGameRules().getValue(Mod.PORTALS_ALLOW_CUSTOM_SHAPES);
 	}
 
 	private int portalsCustomSearchMaxDepth() {
-		return this.world != null ? this.world.getGameRules().getInt(Mod.PORTALS_CUSTOM_SEARCH_MAX_DEPTH) : -1;
+		return this.world != null ? this.world.getGameRules().getValue(Mod.PORTALS_CUSTOM_SEARCH_MAX_DEPTH) : -1;
 	}
 
 	private int portalsCustomShapeMinBlocks() {
-		return this.world != null ? this.world.getGameRules().getInt(Mod.PORTALS_CUSTOM_SHAPE_MIN_BLOCKS) : -1;
+		return this.world != null ? this.world.getGameRules().getValue(Mod.PORTALS_CUSTOM_SHAPE_MIN_BLOCKS) : -1;
 	}
 
 	private int portalsCustomShapeMaxBlocks() {
-		return this.world != null ? this.world.getGameRules().getInt(Mod.PORTALS_CUSTOM_SHAPE_MAX_BLOCKS) : -1;
+		return this.world != null ? this.world.getGameRules().getValue(Mod.PORTALS_CUSTOM_SHAPE_MAX_BLOCKS) : -1;
 	}
 
 }
