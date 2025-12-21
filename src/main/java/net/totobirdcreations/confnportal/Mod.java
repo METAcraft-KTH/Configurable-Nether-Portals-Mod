@@ -5,11 +5,15 @@ import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.serialization.Codec;
 import net.fabricmc.api.ModInitializer;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
-import net.minecraft.resource.featuretoggle.FeatureSet;
-import net.minecraft.util.Identifier;
-import net.minecraft.world.rule.*;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.flag.FeatureFlagSet;
+import net.minecraft.world.level.gamerules.GameRule;
+import net.minecraft.world.level.gamerules.GameRuleCategory;
+import net.minecraft.world.level.gamerules.GameRuleType;
+import net.minecraft.world.level.gamerules.GameRuleTypeVisitor;
+import net.minecraft.world.level.gamerules.GameRules;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.ToIntFunction;
@@ -28,21 +32,21 @@ public class Mod implements ModInitializer {
     }
 
 	private static GameRule<Integer> registerInt(String name, GameRuleCategory category, int defaultValue, int minValue) {
-		return registerInt(name, category, defaultValue, minValue, Integer.MAX_VALUE, FeatureSet.empty());
+		return registerInt(name, category, defaultValue, minValue, Integer.MAX_VALUE, FeatureFlagSet.of());
 	}
 
-	private static GameRule<Integer> registerInt(String name, GameRuleCategory category, int defaultValue, int minValue, int maxValue, FeatureSet requiredFeatures) {
+	private static GameRule<Integer> registerInt(String name, GameRuleCategory category, int defaultValue, int minValue, int maxValue, FeatureFlagSet requiredFeatures) {
 		return register(
 				name, category, GameRuleType.INT, IntegerArgumentType.integer(minValue, maxValue),
 				Codec.intRange(minValue, maxValue), defaultValue, requiredFeatures,
-				GameRuleVisitor::visitInt, (value) -> value
+				GameRuleTypeVisitor::visitInteger, (value) -> value
 		);
 	}
 
 	private static GameRule<@NotNull Boolean> registerBoolean(String id, GameRuleCategory gameRuleCategory, boolean defaultValue) {
 		return register(
 				id, gameRuleCategory, GameRuleType.BOOL, BoolArgumentType.bool(),
-				Codec.BOOL, defaultValue, FeatureSet.empty(), GameRuleVisitor::visitBoolean,
+				Codec.BOOL, defaultValue, FeatureFlagSet.of(), GameRuleTypeVisitor::visitBoolean,
 				(b) -> b ? 1 : 0
 		);
 	}
@@ -50,11 +54,11 @@ public class Mod implements ModInitializer {
 	private static <T> GameRule<@NotNull T> register(
 			String id, GameRuleCategory gameRuleCategory,
 			GameRuleType gameRuleType, ArgumentType<T> argumentType,
-			Codec<T> codec, T object, FeatureSet featureFlagSet,
-			GameRules.Acceptor<@NotNull T> visitorCaller, ToIntFunction<T> toIntFunction
+			Codec<T> codec, T object, FeatureFlagSet featureFlagSet,
+			GameRules.VisitorCaller<@NotNull T> visitorCaller, ToIntFunction<T> toIntFunction
 	) {
 		return Registry.register(
-				Registries.GAME_RULE, Identifier.of("confnportal", id),
+				BuiltInRegistries.GAME_RULE, Identifier.fromNamespaceAndPath("confnportal", id),
 				new GameRule<>(
 						gameRuleCategory, gameRuleType, argumentType, visitorCaller,
 						codec, toIntFunction, object, featureFlagSet

@@ -1,16 +1,16 @@
 package net.totobirdcreations.confnportal.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.NetherPortalBlock;
-import net.minecraft.registry.tag.BlockTags;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.BlockView;
-import net.minecraft.world.dimension.NetherPortal;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.NetherPortalBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.portal.PortalShape;
 import net.totobirdcreations.confnportal.Mod;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
@@ -22,20 +22,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.ArrayList;
 
 
-@Mixin(NetherPortal.class)
+@Mixin(PortalShape.class)
 public class NetherPortalMixin {
 
 	private final ArrayList<BlockPos>   blocks    = new ArrayList<>();
 	private       Direction.Axis        direction = Direction.Axis.X;
-	private       @Nullable ServerWorld world     = null;
+	private       @Nullable ServerLevel world     = null;
 
-	@ModifyReturnValue(method = "getOnAxis", at = @At("RETURN"))
-	private static NetherPortal init(NetherPortal original, BlockView view) {
+	@ModifyReturnValue(method = "findAnyShape", at = @At("RETURN"))
+	private static PortalShape init(PortalShape original, BlockGetter view) {
 		NetherPortalMixin self = (NetherPortalMixin)(Object) original;
-		var pos = original.lowerCorner;
-		self.world = view instanceof ServerWorld world$ ? world$ : null;
+		var pos = original.bottomLeft;
+		self.world = view instanceof ServerLevel world$ ? world$ : null;
 		if (self.portalsAllowCustomShapes()) {
-			original.lowerCorner = null;
+			original.bottomLeft = null;
 			original.width       = 0;
 			original.height      = 0;
 			self.blocks.clear();
@@ -64,11 +64,11 @@ public class NetherPortalMixin {
 			return false;
 		}
 		BlockState state = this.world.getBlockState(pos);
-		if (state.isAir() || state.isIn(BlockTags.FIRE)) {
+		if (state.isAir() || state.is(BlockTags.FIRE)) {
 			this.blocks.add(pos);
 			for (Direction offset : Direction.values()) {
-				if (offset.getAxis() == Direction.Axis.Y || offset.rotateYClockwise().getAxis() != this.direction) {
-					BlockPos next = pos.offset(offset, 1);
+				if (offset.getAxis() == Direction.Axis.Y || offset.getClockWise().getAxis() != this.direction) {
+					BlockPos next = pos.relative(offset, 1);
 					if (! this.checkAxis(next, depth + 1)) {
 						return false;
 					}
@@ -87,29 +87,29 @@ public class NetherPortalMixin {
 		}
 	}
 
-	@Inject(method = "createPortal", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "createPortalBlocks", at = @At("HEAD"), cancellable = true)
 	private void createPortal(CallbackInfo ci) {
 		if (this.portalsAllowCustomShapes()) {
 			assert this.world != null;
-			BlockState state = Blocks.NETHER_PORTAL.getDefaultState().with(NetherPortalBlock.AXIS, this.direction);
+			BlockState state = Blocks.NETHER_PORTAL.defaultBlockState().setValue(NetherPortalBlock.AXIS, this.direction);
 			for (BlockPos pos : this.blocks) {
-				this.world.setBlockState(pos, state, Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
+				this.world.setBlock(pos, state, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
 			}
 			ci.cancel();
 		}
 	}
 
 	@Inject(method = "method_30487", at = @At("HEAD"), cancellable = true, remap = false)
-	private static void isValidFrameBlock(BlockState state, BlockView view, BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
-		if (view instanceof ServerWorld world && world.getGameRules().getValue(Mod.PORTALS_ALLOW_CUSTOM_SHAPES)) {
+	private static void isValidFrameBlock(BlockState state, BlockGetter view, BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
+		if (view instanceof ServerLevel world && world.getGameRules().get(Mod.PORTALS_ALLOW_CUSTOM_SHAPES)) {
 			cir.setReturnValue(isValidFrameBlock(state, view, pos));
 		}
 	}
 
-	private static boolean isValidFrameBlock(BlockState state, BlockView view, BlockPos ignored) {
-		return view instanceof ServerWorld world && (
-				(world.getGameRules().getValue(Mod.PORTALS_ALLOW_CRYING_OBSIDIAN) && state.isOf(Blocks.CRYING_OBSIDIAN))
-						|| (state.isOf(Blocks.OBSIDIAN))
+	private static boolean isValidFrameBlock(BlockState state, BlockGetter view, BlockPos ignored) {
+		return view instanceof ServerLevel world && (
+				(world.getGameRules().get(Mod.PORTALS_ALLOW_CRYING_OBSIDIAN) && state.is(Blocks.CRYING_OBSIDIAN))
+						|| (state.is(Blocks.OBSIDIAN))
 		);
 	}
 
@@ -119,19 +119,19 @@ public class NetherPortalMixin {
 
 
 	private boolean portalsAllowCustomShapes() {
-		return this.world != null && this.world.getGameRules().getValue(Mod.PORTALS_ALLOW_CUSTOM_SHAPES);
+		return this.world != null && this.world.getGameRules().get(Mod.PORTALS_ALLOW_CUSTOM_SHAPES);
 	}
 
 	private int portalsCustomSearchMaxDepth() {
-		return this.world != null ? this.world.getGameRules().getValue(Mod.PORTALS_CUSTOM_SEARCH_MAX_DEPTH) : -1;
+		return this.world != null ? this.world.getGameRules().get(Mod.PORTALS_CUSTOM_SEARCH_MAX_DEPTH) : -1;
 	}
 
 	private int portalsCustomShapeMinBlocks() {
-		return this.world != null ? this.world.getGameRules().getValue(Mod.PORTALS_CUSTOM_SHAPE_MIN_BLOCKS) : -1;
+		return this.world != null ? this.world.getGameRules().get(Mod.PORTALS_CUSTOM_SHAPE_MIN_BLOCKS) : -1;
 	}
 
 	private int portalsCustomShapeMaxBlocks() {
-		return this.world != null ? this.world.getGameRules().getValue(Mod.PORTALS_CUSTOM_SHAPE_MAX_BLOCKS) : -1;
+		return this.world != null ? this.world.getGameRules().get(Mod.PORTALS_CUSTOM_SHAPE_MAX_BLOCKS) : -1;
 	}
 
 }
