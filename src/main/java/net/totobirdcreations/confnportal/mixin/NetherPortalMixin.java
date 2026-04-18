@@ -104,7 +104,7 @@ public class NetherPortalMixin {
 		}
 	}
 
-	@Inject(method = "method_30487", at = @At("HEAD"), cancellable = true, remap = false)
+	@Inject(method = "lambda$static$0", at = @At("HEAD"), cancellable = true, remap = false)
 	private static void isValidFrameBlock(BlockState state, BlockGetter view, BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
 		if (view instanceof ServerLevel world && world.getGameRules().get(Mod.PORTALS_ALLOW_CUSTOM_SHAPES)) {
 			cir.setReturnValue(isValidFrameBlock(state, view, pos));
